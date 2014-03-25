@@ -1,0 +1,150 @@
+Notes for FuzzyControl module.
+===============================
+
+The FuzzyControl module attempts to implement a generic fuzzy controller
+functionality based on the Fuzzy Control Language (FCL) as defined by the
+International Electrotechnical Commision (IEC) standard IEC 61131-7 (2000-08)
+Fuzzy Control Programming [1]. The standard defines a lexicon for definition
+of rule-based linguistic (fuzzy) control modules. The FuzzyControl module
+reads in an FCL file, creates the appropriate input/output/rule data
+structures, and provides API access for setting and firing of fuzzy rules.
+
+The intention is that a facility will exist for application of fuzzy control
+algorithms which is independent of a proprietary fuzzy problem statement
+format, providing maximal compatibility, flexibility and extensibility. 
+It is also realized that by implementing a subset of general fuzzy logic
+processing which allows for crisp I/O processing, i.e. the use of 'singleton'
+fuzzy membership functions, that the FCL and its' implementation in the 
+FuzzyControl module will provide classical crisp-set rule-based logic 
+programming.
+
+[1] International Electrotechnical Commision (IEC)
+    Technical Committee No. 65
+    Industrial Process Measurement and Control
+    Sub-committee 65B: Devices
+    IEC 1131 - Programmable Controllers
+    Part 7 - Fuzzy Control Programming
+
+
+--------------------------------
+
+Overall structure of FuzzyControl
+
+The FuzzyControlClass is the top-level container. It contains the
+following classes/structures:
+
+1)	  map<string, FCL_keyword*>      keywords; 
+2)	  map<string, FuzzyInputClass*>	 InputVariables; 
+3)	  map<string, FuzzyOutputClass*> OutputVariables; 
+4)	  map<string, FuzzyRuleClass*>	 Rules;
+5)        map<string, vector<double>*>   InputData; 
+
+1) The FuzzyControlClass contains a map of the FCL keywords: 
+
+	   map<string, FCL_keyword*> keywords;
+
+where the key is a string of the keyword name, and the value is a pointer
+to an FCL_keyword structure. One FCL_keyword structure exists for each
+keyword in the FCL language. For convenience, pointers to each keyword
+struct in the map are maintained in FuzzyControlClass. All access to
+keyword objects take place through this map. Changes to the FCL standard
+or keyword modifications only need to be changed in the keywords map.
+
+
+2) InputVariables is a map which contains the fuzzy input variables.
+The key is a string which is the name of the input variable, the
+values point to a FuzzyInputClass, one for each variable. The FuzzyInputClass
+contains a map of the fuzzy terms (membership functions) applied to 
+this input variable:
+
+	   map<string, FuzzyInputTerm*> InputTerms;
+
+where the key is a string which is the name of the fuzzy input
+TERM (hot, cold...), and the values point to a FuzzyInputTerm struct,
+one for each term. The FuzzyInputTerm contains a vector of XY data
+struct pointers, each of which contains an x,y pair of points,
+that defines the ordinates and abcissa for the points of the
+membership term.
+
+
+3) OutputVariables is a map which contains the fuzzy output variables.
+The key is a string which is the name of the output variable, the
+values point to a FuzzyOutputClass, one for each variable. The FuzzyOutputClass
+contains a map of the output terms (defuzzification functions) applied
+to each output variable:
+
+	   map<string, FuzzyOutputTerm*> OutputTerms;
+
+The key is a string which is the name of the term (open, closed...), 
+the values point to a FuzzyOutputTerm struct, one for each term.
+The FuzzyOutputTerm contains a vector of XY data struct pointers,
+each of which contains an x,y pair of points, that defines the 
+ordinates and abcissa for the points of the membership term. There is
+also an XY struct for data values of a singleton output. The
+FuzzyOutputClass contains a map of the accumulation terms for this
+fuzzy output:
+
+           map <string, FuzzyOutputTerm*> AccumulationTerms; 
+
+where the key is a string which is the name of the output Term,
+the values are a FuzzyOutputTerm, one for each output term. These
+terms are containers for the accumulation of the activationTerms
+in the conclusion of each rule.
+
+
+4) Rules is a map which contains the fuzzy rules. The key is a string 
+which is the name of the rule, the values point to a FuzzyRuleClass, 
+one for each rule. The FuzzyRuleClass contains vectors to hold the
+(possibly multiple) rule conditions (premises), and conclusions:
+
+	  vector<Condition*>  Conditions;
+	  vector<Conclusion*> Conclusions;
+
+Each stack contains pointers to Conditions and Conclusion structures.
+The Condition structure contains two vectors of sub-conditions for
+the rule:
+
+	  vector<SubCondition*> AND_SubConditions;
+	  vector<SubCondition*> OR_SubConditions;
+
+This allows for multiple rule sub-conditions in the premise of a rule,
+i.e. IF temp is hot AND color is blue OR time is late THEN....
+Each SubCondition struct contains pointers to the associated 
+FuzzyInputClass of the input variable, and the FuzzyInputTerm.
+The Conclusion struct contains pointers to the FuzzyOutputClass
+output variable and FuzzyOutputTerm, as well as a FuzzyOutputTerm
+structure: activationTerm, which holds the result of the rule
+activation for this output term.
+
+5) InputData is a map which contains a the fuzzy input data. The
+key is a string of the fuzzy input variable, the values are a
+vector of input data points (timeseries) for the input variable.
+
+       map <string, vector<double>* > InputData; 
+
+The InputData container can be initialized from an input file
+which lists the name of the input variables in the first line, 
+followed by data lines for each variable:
+
+temp, pressure
+20, 100
+30, 100
+40, 100
+.., ...
+
+The input data file can also contain a label column that specifies
+a label for each row.  This label is not processed as an input
+variable.  The column name is specified with the fourth command line
+argument.  For example, to use a file as below with the column Location
+as the label, the invocation is:
+   RunFCL FCL.fcl Data.dat Output.txt Location
+
+Location,   Temperature,  Pressure
+California, 70,           1012.0
+New York,   60,           1015.5
+Texas,      80,           1013.0
+Florida,    85,           1018.0
+...,        ...,          ...
+
+The input data file is parsed with a delimeter specified with the 
+fifth command line option.  The default is a comma ",". 

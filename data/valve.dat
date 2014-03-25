@@ -1,0 +1,6 @@
+name, valve
+"closed",    0
+"1/4 open",  25
+"1/2 open",  50
+"3/4 open",  75
+"open",      100

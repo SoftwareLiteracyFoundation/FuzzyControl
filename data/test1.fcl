@@ -1,0 +1,70 @@
+// Test FCL file
+// Note that ';' terminates a FCL line, so any text on a line
+// after a ';' is ignored.
+// Also, inside a FUZZIFY or DEFUZZIFY block, extra lines that
+// don't start with a keyword are ignored.
+// Other than that, any line that starts with '//' is ignored.
+// The FCL comment is apparently delimeted as: (* comment *)
+// Any line that starts with '(*' is ignored.
+//
+// Problem: doesn't recognize FCL statements that span lines
+// Problem: doesn't truly recognize (* ... *) as comment
+// 
+FUNCTION_BLOCK Fuzzy_FB
+VAR_INPUT
+	// comment
+	temp     : REAL;
+	pressure : REAL;
+END_VAR
+VAR_OUTPUT
+	valve1 : REAL;
+	// comment
+	valve2 : REAL;
+END_VAR
+FUZZIFY temp
+	// comment
+	TERM cold := (5, 0) (10, 1);
+	TERM hot  := (5, 0) (7.5, 1) (10, 0);
+END_FUZZIFY
+FUZZIFY pressure
+	TERM low  := (0, 0) (10, 1) (20,1) (30, 0);
+	// comment
+	TERM high := (20, 0) (20, 1) (50, 1) (50, 0);
+END_FUZZIFY
+DEFUZZIFY valve1
+	  TERM drainage := 5;    // (0, 0) (10, 1);
+	  TERM closed   := 10;   // (0, 0) (4, 1) (6, 1) (10, 0);
+	  TERM inlet    := 15;
+// comment
+	  ACCU: MAX;
+	  METHOD: COG;
+	  DEFAULT:= 0;
+	  RANGE:= (0, 100);
+END_DEFUZZIFY
+DEFUZZIFY valve2
+	  // comment
+	  TERM drainage := (0, 1) (20, 0);
+	  TERM closed   := (0, 0) (5, 1);
+	  TERM inlet    := (0, 0) (0, 1) (60, 1) (60, 0);
+	  ACCU: MAX;
+	  METHOD: COG;
+	  DEFAULT:= NC;
+	  RANGE:= (0, 100);
+END_DEFUZZIFY
+RULEBLOCK No1
+// comment
+	  AND : MIN;
+	  OR  : MAX;
+	  ACT : MIN;
+	  // comment
+	  RULE 1: IF temp IS cold AND pressure IS NOT low
+		  THEN valve1 IS inlet, valve2 IS inlet;
+	  // comment
+	  RULE 2: IF NOT (temp IS cold) AND pressure IS high
+		  THEN valve1 IS closed WITH 0.8;
+	  RULE 3: IF temp IS hot OR pressure IS NOT low
+		  THEN valve1 IS closed, valve2 IS inlet;
+	  RULE 4: IF temp IS NOT hot OR pressure IS high
+		  THEN valve1 IS drainage WITH 0.5;
+END_RULEBLOCK
+END_FUNCTION_BLOCK

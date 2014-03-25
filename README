@@ -1,0 +1,24 @@
+Fuzzy Control Language (FCL) Library
+
+A basic implementation of the FCL, see doc/.
+
+To compile, run 'make' in the src/ directory.
+
+This should build the exectuable file RunFCL, 
+as well as the library libfcl.a. A successful
+make will copy the RunFCL to the fuzzy/ directory.
+
+To run a FCL file, three arguments are required:
+1) FCL model file  
+2) Data input file with values of the fuzzy inputs
+3) Output file where results are written
+
+For example, from the fuzzy/ directory:
+"./RunFCL data/test.fcl data/test.in test.out"
+
+An optional fourth argument can specify a column
+name in the input file that will be used as a label
+in the output for each input line.
+
+An optional fifth argument specifies the file delimeter
+for parsing the input data file.  Default is a comma.
